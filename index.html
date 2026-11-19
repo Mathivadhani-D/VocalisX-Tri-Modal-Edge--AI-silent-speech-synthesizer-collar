@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — VocalisX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header>
+    <div class="hl"><span class="logo" id="logo"></span><b>VocalisX</b><span id="title"></span></div>
+    <button class="pill" id="pill"><span class="dot"></span><span id="pillText"></span></button>
+  </header>
+  <main class="app">
+    <section id="view-home" class="col">
+      <div class="telemetry">
+        <div class="stat bad" id="sigStat"><small data-t="signal"></small><strong id="sig">—</strong></div>
+        <div class="stat bad" id="elStat"><small data-t="electrode"></small><strong id="el"></strong></div>
+      </div>
+      <div class="banner" id="banner"><span data-t="bannerText"></span><button class="link" id="reconnect"
+          data-t="reconnect"></button></div>
+      <div class="langs" role="group" aria-label="Language" id="langs">
+        <button data-lang="en">English</button><button data-lang="ta">தமிழ்</button><button
+          data-lang="hi">हिंदी</button><button data-lang="te">తెలుగు</button>
+      </div>
+      <section class="card" id="predict" aria-live="polite">
+        <h3 data-t="live"></h3>
+        <div class="wave" id="wave" aria-hidden="true"></div>
+        <div class="readout idle" id="readout"></div>
+        <div class="conf" id="conf"></div>
+        <div class="actions"><button class="btn" id="confirm" data-t="confirm" disabled></button><button class="btn out"
+            id="repeat" data-t="repeat" disabled></button></div>
+      </section>
+      <section class="card emerg" aria-labelledby="emTag"><span class="tag" id="emTag" data-t="emergency"></span>
+        <div class="stack" id="emRow"></div>
+      </section>
+      <section class="col">
+        <div class="rw">
+          <h3 data-t="history"></h3><button class="link" id="viewAll" data-t="viewAll"></button>
+        </div>
+        <button class="btn out" id="addBtn" data-t="addVoice"></button>
+        <form class="add" id="addForm" hidden><input id="addInput" type="text" autocomplete="off"
+            aria-label="Phrase"><button class="btn">+</button><button class="btn out" type="button" id="mic"
+            aria-label="Dictate">🎤</button></form>
+        <ul class="list" id="list"></ul>
+        <p class="empty" id="empty"></p>
+      </section>
+    </section>
+    <section id="view-page" class="col" style="display:none"></section>
+  </main>
+  <nav id="nav" aria-label="Main"></nav>
+  <button class="fab" id="fab" hidden></button>
+  <dialog id="dlg">
+    <form id="dlgForm"></form>
+  </dialog>
+  <div id="overlay" role="alertdialog" aria-modal="true">
+    <div data-t="emergency"></div>
+    <h1 id="ovPhrase"></h1>
+    <a class="call" href="tel:108">108 — Ambulance</a><a href="tel:112">112 — Emergency</a>
+    <div id="ovContacts" class="stack"></div>
+    <button id="ovClose" data-t="close"></button>
+  </div>
+  <script src="app.js"></script>
+</body>
+
+</html>
