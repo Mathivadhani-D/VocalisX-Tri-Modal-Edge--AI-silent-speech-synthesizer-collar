@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VocalisX Data Explorer</title>
+<style>
+:root{--bg:#0f1826;--card:#1b2736;--line:#2b3a4c;--ink:#f4f7fa;--mut:#9aa9b9;--teal:#3cb59e;--warn:#e8a044}
+@media (prefers-color-scheme: light){:root{--bg:#eef3f5;--card:#fff;--line:#d3dee3;--ink:#12262d;--mut:#5a7079;--teal:#17806e;--warn:#9a5a05}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0}
+h1{font-size:19px;margin:0}h2{font-size:16px;margin:0 0 10px}
+main{max-width:1100px;margin:0 auto;padding:18px;display:flex;flex-direction:column;gap:16px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mut)}
+.notice{border:1px solid var(--warn);color:var(--warn);border-radius:12px;padding:10px 14px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat small{display:block;color:var(--mut);font-size:12px}.stat b{font-size:21px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{color:var(--mut);font-weight:600}.scroll{overflow-x:auto}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+.gallery figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.gallery img{width:100%;background:#fff;border-radius:8px}.gallery figcaption{color:var(--mut);font-size:13px;margin-top:8px}
+@media(max-width:500px){.gallery{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><h1>VocalisX Data Explorer</h1><span class="pill" id="src">loading…</span></header>
+<main>
+  <p class="notice" id="notice" hidden></p>
+  <section class="grid" id="cards"></section>
+  <section class="two">
+    <div class="card"><h2>Samples per phrase</h2><table id="dist"></table></div>
+    <div class="card"><h2>Per-phrase test results</h2><table id="perclass"></table></div>
+  </section>
+  <section class="card"><h2>Raw signal amplitude (mV)</h2><div class="scroll"><table id="amp"></table></div></section>
+  <section class="card"><h2>Feature statistics</h2><div class="scroll"><table id="stats"></table></div></section>
+  <section><h2>Figures</h2><div class="gallery" id="gallery"></div></section>
+</main>
+<script>
+const CAP = {
+  "class-distribution": "Windows per phrase. Unequal bars mean class imbalance, handled with balanced class weights.",
+  "signal-examples": "One raw (grey) and filtered (colour) window per phrase. Note the different burst patterns and amplitudes.",
+  "feature-boxplots": "Spread of four key features per phrase. Boxes that do not overlap separate easily.",
+  "feature-histograms": "Distribution shape of six features (skew and spread).",
+  "correlation-heatmap": "Pearson correlation between features. Dark red or blue pairs carry the same information.",
+  "psd-by-phrase": "Average power spectrum per phrase. Curves that differ show frequency content separates phrases.",
+  "pca-scatter": "Features squeezed to 2 dimensions. Overlapping clusters mark phrases the model will confuse.",
+  "confusion-matrix": "Rows are the true phrase, columns the prediction. Off-diagonal cells are mistakes.",
+  "feature-importance": "Which features the model relies on most (drop in macro-F1 when shuffled).",
+  "model-comparison": "Random Forest vs SVM vs k-NN under 5-fold cross-validation."
+};
+const $ = id => document.getElementById(id);
+const get = async p => { const r = await fetch(p); if (!r.ok) throw new Error(p + " " + r.status); return r.json(); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const n = (v, d = 4) => v === null || v === undefined ? "–" : Number(v).toPrecision(d).replace(/\.?0+$/, "");
+const table = (head, rows) => "<tr>" + head.map(h => `<th>${esc(h)}</th>`).join("") + "</tr>" + rows.map(r => "<tr>" + r.map(c => `<td>${esc(c)}</td>`).join("") + "</tr>").join("");
+
+(async () => {
+  try {
+    const [sum, ev, stats, out, plots] = await Promise.all([get("/api/eda/summary"), get("/api/model/evaluation"), get("/api/eda/statistics"), get("/api/eda/outliers"), get("/api/plots")]);
+    const d = sum.dataset, cd = sum.class_distribution;
+    $("src").textContent = "source: " + d.source;
+    if (d.is_synthetic) { $("notice").hidden = false; $("notice").textContent = "These results come from a synthetic dataset generated by the backend, not from a real collar. Report them as such."; }
+    const cards = [["Windows", d.n_windows], ["Features", d.n_features], ["Imbalance ratio", cd.imbalance_ratio + "×"], ["Best model", ev.best_model],
+                   ["Test accuracy", (ev.test_accuracy * 100).toFixed(1) + "%"], ["Macro-F1", (ev.macro_f1 * 100).toFixed(1) + "%"],
+                   ["Missing values", sum.missing_values.total_missing], ["Extreme-outlier windows", out.percent_of_windows + "%"]];
+    $("cards").innerHTML = cards.map(([k, v]) => `<div class="card stat"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("");
+    $("dist").innerHTML = table(["Phrase", "Windows", "Share"], Object.keys(cd.counts).map(k => [k, cd.counts[k], cd.percent[k] + "%"]));
+    $("perclass").innerHTML = table(["Phrase", "Precision", "Recall", "F1", "Test n"], ev.classes.map(c => { const p = ev.per_class[c]; return [c, n(p.precision, 3), n(p.recall, 3), n(p["f1-score"], 3), p.support]; }));
+    const a = sum.amplitude_statistics, cols = ["mean", "median", "variance", "std", "min", "max"];
+    $("amp").innerHTML = table(["Group", ...cols], [["All phrases", ...cols.map(c => n(a.overall[c]))], ...Object.keys(a.per_phrase).map(k => [k, ...cols.map(c => n(a.per_phrase[k][c]))])]);
+    const sc = ["mean", "median", "variance", "std", "min", "max", "skewness", "kurtosis"];
+    $("stats").innerHTML = table(["Feature", ...sc], Object.keys(stats).map(f => [f, ...sc.map(c => n(stats[f][c]))]));
+    $("gallery").innerHTML = Object.entries(plots.plots).map(([name, url]) => `<figure><img loading="lazy" src="${url}" alt="${esc(name)}"><figcaption><b>${esc(name)}</b>. ${esc(CAP[name] || "")}</figcaption></figure>`).join("");
+  } catch (e) { $("src").textContent = "error"; $("notice").hidden = false; $("notice").textContent = "Could not load data from the API: " + e.message; }
+})();
+</script></body></html>

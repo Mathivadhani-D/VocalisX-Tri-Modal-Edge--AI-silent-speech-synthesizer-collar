@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+python-multipart
+soundfile
+librosa        # optional: MFCC features in /api/audio/features (the API runs without it)
+# pyaudio      # optional: live microphone capture in audio.record_microphone (needs the PortAudio system library)
+httpx          # only for running tests with FastAPI's TestClient
+aiofiles       # lets FastAPI serve the dashboard folder at /app
